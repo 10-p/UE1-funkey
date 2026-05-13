@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
 
+env:
+  FUNKEY_SDK_PATH: ${{ github.workspace }}/funkey-sdk
+  FUNKEY_DEPS_PREFIX: ${{ github.workspace }}/funkey-deps
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -32,16 +36,16 @@ jobs:
 
       - name: Set up SDL2 deps
         run: |
-          mkdir -p funkey-deps/include funkey-deps/lib
-          SDK_SYSROOT=funkey-sdk/arm-funkey-linux-musleabihf/sysroot
-          cp -r $SDK_SYSROOT/usr/include/SDL2 funkey-deps/include/
-          cp -L $SDK_SYSROOT/usr/lib/libSDL2* funkey-deps/lib/
-          cp -L $SDK_SYSROOT/usr/lib/libdirectfb* funkey-deps/lib/
-          cp -L $SDK_SYSROOT/usr/lib/libdirect-* funkey-deps/lib/
-          cp -L $SDK_SYSROOT/usr/lib/libfusion* funkey-deps/lib/
-          cp -L $SDK_SYSROOT/usr/lib/lib++dfb* funkey-deps/lib/
-          cp -L $SDK_SYSROOT/usr/lib/libts* funkey-deps/lib/
-          cp -rL $SDK_SYSROOT/usr/lib/directfb-1.7-7 funkey-deps/lib/
+          mkdir -p "$FUNKEY_DEPS_PREFIX/include" "$FUNKEY_DEPS_PREFIX/lib"
+          SDK_SYSROOT="$FUNKEY_SDK_PATH/arm-funkey-linux-musleabihf/sysroot"
+          cp -r $SDK_SYSROOT/usr/include/SDL2 "$FUNKEY_DEPS_PREFIX/include/"
+          cp -L $SDK_SYSROOT/usr/lib/libSDL2* "$FUNKEY_DEPS_PREFIX/lib/"
+          cp -L $SDK_SYSROOT/usr/lib/libdirectfb* "$FUNKEY_DEPS_PREFIX/lib/"
+          cp -L $SDK_SYSROOT/usr/lib/libdirect-* "$FUNKEY_DEPS_PREFIX/lib/"
+          cp -L $SDK_SYSROOT/usr/lib/libfusion* "$FUNKEY_DEPS_PREFIX/lib/"
+          cp -L $SDK_SYSROOT/usr/lib/lib++dfb* "$FUNKEY_DEPS_PREFIX/lib/"
+          cp -L $SDK_SYSROOT/usr/lib/libts* "$FUNKEY_DEPS_PREFIX/lib/"
+          cp -rL $SDK_SYSROOT/usr/lib/directfb-1.7-7 "$FUNKEY_DEPS_PREFIX/lib/"
 
       - name: Build libxmp
         run: |
@@ -51,10 +55,10 @@ jobs:
           cmake -Bbuild \
             -DCMAKE_SYSTEM_NAME=Linux \
             -DCMAKE_SYSTEM_PROCESSOR=armv7l \
-            -DCMAKE_C_COMPILER="${{ github.workspace }}/funkey-sdk/bin/arm-funkey-linux-musleabihf-gcc" \
-            -DCMAKE_SYSROOT="${{ github.workspace }}/funkey-sdk/arm-funkey-linux-musleabihf/sysroot" \
+            -DCMAKE_C_COMPILER="$FUNKEY_SDK_PATH/bin/arm-funkey-linux-musleabihf-gcc" \
+            -DCMAKE_SYSROOT="$FUNKEY_SDK_PATH/arm-funkey-linux-musleabihf/sysroot" \
             -DCMAKE_C_FLAGS="-mthumb -march=armv7-a+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4" \
-            -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/funkey-deps" \
+            -DCMAKE_INSTALL_PREFIX="$FUNKEY_DEPS_PREFIX" \
             -DBUILD_SHARED_LIBS=ON
           cmake --build build -j$(nproc)
           cmake --install build
@@ -66,8 +70,6 @@ jobs:
           cmake -G"Unix Makefiles" \
             -DCMAKE_TOOLCHAIN_FILE=cmake/funkey-arm.cmake \
             -DFUNKEY=ON \
-            -DFUNKEY_SDK_PATH="${{ github.workspace }}/funkey-sdk" \
-            -DFUNKEY_DEPS_PREFIX="${{ github.workspace }}/funkey-deps" \
             -Bbuild-funkey Source
           cmake --build build-funkey -j$(nproc)
 
