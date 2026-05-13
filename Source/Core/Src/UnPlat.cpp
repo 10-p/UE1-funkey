@@ -1573,6 +1573,12 @@ CORE_API const char* appBaseDir()
 #elif defined(PLATFORM_PSVITA)
 		if ( getcwd( BaseDir, sizeof(BaseDir) ) )
 			appStrncat( BaseDir, "/", sizeof(BaseDir) - 1 );
+#elif defined(PLATFORM_FUNKEY)
+		// On FunKey, the binary lives inside a read-only OPK squashfs mount.
+		// SDL_GetBasePath() would return that mount, not the game directory.
+		// Use CWD instead — PlatformPreInit() already chdir'd to the game root.
+		if ( getcwd( BaseDir, sizeof(BaseDir) ) )
+			appStrncat( BaseDir, "/", sizeof(BaseDir) - 1 );
 #elif defined(PLATFORM_SDL)
 		char* BasePath = SDL_GetBasePath();
 		appStrncpy( BaseDir, BasePath, sizeof(BaseDir) );

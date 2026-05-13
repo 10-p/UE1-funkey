@@ -6,6 +6,10 @@ else()
   set(SRC_FILES "Src/WinLaunch.cpp")
 endif()
 
+if(FUNKEY)
+  enable_language(C)
+endif()
+
 if(VITA)
   set(VITA_APP_NAME "Unreal")
   set(VITA_TITLEID  "UNRL00001")
@@ -76,6 +80,15 @@ if(VITA)
     SceSblSsMgr_stub
     SceKernelDmacMgr_stub
   )
+elseif(FUNKEY)
+  target_link_libraries(${PROJECT_NAME}
+    -Wl,--whole-archive pthread -Wl,--no-whole-archive
+    ${OPENAL_LIBRARY}
+    ${LIBXMP_LIBRARY}
+    m
+    dl
+    asound
+  )
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE UNREAL_EXPORTS UPACKAGE_NAME=${PROJECT_NAME})
@@ -86,5 +99,34 @@ if(VITA)
     VERSION ${VITA_VERSION}
     NAME ${VITA_APP_NAME}
     FILE ${CMAKE_CURRENT_SOURCE_DIR}/Res/sce_sys sce_sys
+  )
+elseif(FUNKEY)
+  set(FUNKEY_DIR "${CMAKE_SOURCE_DIR}/../FunKey")
+  set(OPK_STAGING "${CMAKE_BINARY_DIR}/opk-staging")
+  set(OPK_OUTPUT "${CMAKE_BINARY_DIR}/unreal_funkey-s.opk")
+
+  add_custom_target(package-opk
+    # Clean and create staging directory
+    COMMAND ${CMAKE_COMMAND} -E rm -rf "${OPK_STAGING}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${OPK_STAGING}/lib"
+
+    # Binary and FunKey metadata
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${PROJECT_NAME}>" "${OPK_STAGING}/Unreal.bin"
+    COMMAND ${CMAKE_COMMAND} -E copy "${FUNKEY_DIR}/unreal.funkey-s.desktop" "${OPK_STAGING}/"
+    COMMAND ${CMAKE_COMMAND} -E copy "${FUNKEY_DIR}/unreal_launcher.sh" "${OPK_STAGING}/"
+    COMMAND chmod +x "${OPK_STAGING}/Unreal.bin" "${OPK_STAGING}/unreal_launcher.sh"
+
+    # Bundle shared libraries from funkey-deps
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${FUNKEY_DEPS_PREFIX}/lib" "${OPK_STAGING}/lib"
+
+    # Bundle OpenAL from SDK sysroot
+    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_SYSROOT}/usr/lib/libopenal.so.1" "${OPK_STAGING}/lib/"
+
+    # Create OPK
+    COMMAND mksquashfs "${OPK_STAGING}" "${OPK_OUTPUT}"
+            -all-root -noappend -no-exports -no-xattrs -no-progress
+
+    DEPENDS ${PROJECT_NAME}
+    COMMENT "Packaging FunKey OPK -> ${OPK_OUTPUT}"
   )
 endif()

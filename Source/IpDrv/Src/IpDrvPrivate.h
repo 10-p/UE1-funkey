@@ -24,6 +24,8 @@ Revision history:
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <sys/select.h>
+#include <sys/types.h>
 #endif
 
 #include <stdlib.h>

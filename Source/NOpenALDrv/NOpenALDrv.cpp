@@ -1,11 +1,17 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #define AL_ALEXT_PROTOTYPES
 #include "AL/al.h"
 #include "AL/alc.h"
 #include "AL/alext.h"
+#if __has_include("AL/efx.h")
 #include "AL/efx.h"
 #include "AL/efx-presets.h"
+#define HAS_EFX 1
+#else
+#define HAS_EFX 0
+#endif
 #include "xmp.h"
 
 #include "NOpenALDrvPrivate.h"
@@ -48,6 +54,9 @@ UNOpenALAudioSubsystem::UNOpenALAudioSubsystem()
 	DopplerFactor = 0.01f;
 	UseHRTF = true;
 	UseReverb = true;
+#if !HAS_EFX
+	UseReverb = false;
+#endif
 	MusicInterpolation = XMP_INTERP_LINEAR;
 }
 
@@ -80,7 +89,9 @@ UBOOL UNOpenALAudioSubsystem::Init()
 
 	const ALint AttrList[] = {
 		ALC_FREQUENCY, OutputRate,
+#ifdef ALC_SOFT_HRTF
 		ALC_SOFT_HRTF, UseHRTF,
+#endif
 		0
 	};
 
@@ -97,10 +108,22 @@ UBOOL UNOpenALAudioSubsystem::Init()
 
 	alDistanceModel( AL_LINEAR_DISTANCE_CLAMPED );
 	alDopplerFactor( Max( 0.f, DopplerFactor ) );
+#ifdef AL_METERS_PER_UNIT
 	alListenerf( AL_METERS_PER_UNIT, DISTANCE_SCALE );
+#endif
 	alListenerf( AL_GAIN, MasterVolume / 255.f );
 
 	alGenSources( MAX_SOURCES, Sources );
+	if( alGetError() != AL_NO_ERROR )
+	{
+		debugf( NAME_Warning, "Could not generate %d AL sources", MAX_SOURCES );
+		alcMakeContextCurrent( NULL );
+		alcDestroyContext( Ctx );
+		Ctx = NULL;
+		alcCloseDevice( Device );
+		Device = NULL;
+		return false;
+	}
 
 	alGenSources( 1, &MusicSource	);
 	alSourcei( MusicSource, AL_SOURCE_RELATIVE, AL_TRUE );
@@ -118,11 +141,13 @@ UBOOL UNOpenALAudioSubsystem::Init()
 
 	if( UseReverb )
 	{
+#if HAS_EFX
 		alGenEffects( 1, &ReverbEffect );
 		InitReverbEffect();
 		alGenAuxiliaryEffectSlots( 1, &ReverbSlot );
 		alAuxiliaryEffectSloti( ReverbSlot, AL_EFFECTSLOT_EFFECT, AL_EFFECT_NULL );
 		ReverbOn = false;
+#endif
 	}
 
 	for( INT i = 0; i < MAX_SOURCES; ++i )
@@ -161,8 +186,10 @@ void UNOpenALAudioSubsystem::Destroy()
 
 	if (UseReverb)
 	{
+#if HAS_EFX
 		alDeleteAuxiliaryEffectSlots(1, &ReverbSlot);
 		alDeleteEffects(1, &ReverbEffect);
+#endif
 	}
 
 	if( Ctx )
@@ -209,8 +236,10 @@ void UNOpenALAudioSubsystem::ShutdownAfterError()
 	}
 	if (UseReverb)
 	{
+#if HAS_EFX
 		alDeleteAuxiliaryEffectSlots(1, &ReverbSlot);
 		alDeleteEffects(1, &ReverbEffect);
+#endif
 	}
 	if( Ctx )
 	{
@@ -470,7 +499,11 @@ void UNOpenALAudioSubsystem::UpdateVoice( INT Num, const ENVoiceOp Op )
 	}
 
 	if( UseReverb && Op == NVOP_Play )
+	{
+#if HAS_EFX
 		alSource3i( Source, AL_AUXILIARY_SEND_FILTER, (ALint)ReverbSlot, 0, AL_FILTER_NULL );
+#endif
+	}
 
 	// Play or stop if needed.
 	switch( Op )
@@ -895,6 +928,7 @@ void UNOpenALAudioSubsystem::UpdateReverb( FPointRegion& Region )
 {
 	guard(UNOpenALAudioSubsystem::UpdateReverb)
 
+#if HAS_EFX
 	const UBOOL bNewReverb = ( Viewport->Actor && Viewport->Actor->Region.Zone && Viewport->Actor->Region.Zone->bReverbZone );
 
 	if( !bNewReverb && ReverbOn )
@@ -923,6 +957,7 @@ void UNOpenALAudioSubsystem::UpdateReverb( FPointRegion& Region )
 			alAuxiliaryEffectSloti( ReverbSlot, AL_EFFECTSLOT_EFFECT, ReverbEffect );
 		}
 	}
+#endif
 
 	unguard;
 }
@@ -931,6 +966,7 @@ void UNOpenALAudioSubsystem::InitReverbEffect()
 {
 	guard(UNOpenALAudioSubsystem::InitReverbEffect)
 
+#if HAS_EFX
 	EFXEAXREVERBPROPERTIES Reverb = EFX_REVERB_PRESET_GENERIC;
 	alEffecti( ReverbEffect, AL_EFFECT_TYPE, AL_EFFECT_EAXREVERB );
 	alEffectf( ReverbEffect, AL_EAXREVERB_DENSITY, Reverb.flDensity );
@@ -956,6 +992,7 @@ void UNOpenALAudioSubsystem::InitReverbEffect()
 	alEffectf( ReverbEffect, AL_EAXREVERB_LFREFERENCE, Reverb.flLFReference );
 	alEffectf( ReverbEffect, AL_EAXREVERB_ROOM_ROLLOFF_FACTOR, Reverb.flRoomRolloffFactor );
 	alEffecti( ReverbEffect, AL_EAXREVERB_DECAY_HFLIMIT, Reverb.iDecayHFLimit );
+#endif
 
 	unguard;
 }

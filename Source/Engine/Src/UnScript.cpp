@@ -116,7 +116,7 @@ void AActor::physMovingBrush( FLOAT DeltaTime )
 	if( IsA(AMover::StaticClass) )
 	{
 		AMover* Mover  = (AMover*)this;
-		INT KeyNum     = Clamp( (INT)Mover->KeyNum, (INT)0, (INT)ARRAY_COUNT(Mover->KeyPos) );
+		INT KeyNum     = Clamp( (INT)Mover->KeyNum, (INT)0, (INT)ARRAY_COUNT(Mover->KeyPos) - 1 );
 		while( Mover->bInterpolating && DeltaTime>0.0 )
 		{
 			// We are moving.

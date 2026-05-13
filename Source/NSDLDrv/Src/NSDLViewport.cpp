@@ -7,6 +7,16 @@
 IMPLEMENT_CLASS( UNSDLViewport );
 
 /*-----------------------------------------------------------------------------
+	FunKey Fn-modifier state (file-scope statics).
+-----------------------------------------------------------------------------*/
+
+#ifdef PLATFORM_FUNKEY
+static BYTE FnKeyMap[SDL_NUM_SCANCODES];
+static UBOOL FnHeld = false;
+static BYTE FnActiveKey[SDL_NUM_SCANCODES]; // tracks which IK_* was sent per scancode for correct release
+#endif
+
+/*-----------------------------------------------------------------------------
 	UNSDLViewport implementation.
 -----------------------------------------------------------------------------*/
 
@@ -146,6 +156,37 @@ void UNSDLViewport::InitKeyMap()
 	INIT_KEY_RANGE( SDL_SCANCODE_KP_1, SDL_SCANCODE_KP_9, IK_NumPad1, IK_NumPad9 );
 	INIT_KEY_RANGE( SDL_SCANCODE_F1,   SDL_SCANCODE_F12,  IK_F1,      IK_F12 );
 	INIT_KEY_RANGE( SDL_SCANCODE_F13,  SDL_SCANCODE_F24,  IK_F13,     IK_F24 );
+
+#ifdef PLATFORM_FUNKEY
+	// fkgpiod maps physical buttons to letter keycodes.
+	// Override D-pad letters → arrow keys (required for menu navigation).
+	KeyMap[SDL_SCANCODE_U] = IK_Up;
+	KeyMap[SDL_SCANCODE_D] = IK_Down;
+	KeyMap[SDL_SCANCODE_L] = IK_Left;
+	KeyMap[SDL_SCANCODE_R] = IK_Right;
+	// Start → Enter, Menu/Power → Escape.
+	KeyMap[SDL_SCANCODE_S] = IK_Enter;
+	KeyMap[SDL_SCANCODE_Q] = IK_Escape;
+	// Face buttons A/B/X/Y stay as IK_A/B/X/Y (already correct).
+	// R shoulder N stays as IK_N (already correct).
+	// Select K stays as IK_K (already correct).
+	// L shoulder (M) → handled as Fn modifier in TickInput, NOT in KeyMap.
+
+	// Build Fn-modified key map (used when L shoulder is held).
+	appMemcpy( FnKeyMap, KeyMap, sizeof(KeyMap) );
+	// Fn + D-pad → letter keys for inventory/alt bindings.
+	FnKeyMap[SDL_SCANCODE_U] = IK_U;
+	FnKeyMap[SDL_SCANCODE_D] = IK_D;
+	FnKeyMap[SDL_SCANCODE_L] = IK_L;
+	FnKeyMap[SDL_SCANCODE_R] = IK_R;
+	// Fn + face buttons → alternate letter keys.
+	FnKeyMap[SDL_SCANCODE_A] = IK_T;
+	FnKeyMap[SDL_SCANCODE_B] = IK_G;
+	FnKeyMap[SDL_SCANCODE_X] = IK_H;
+	FnKeyMap[SDL_SCANCODE_Y] = IK_J;
+	// Fn + R shoulder → alternate key.
+	FnKeyMap[SDL_SCANCODE_N] = IK_F;
+#endif
 
 	#undef INIT_KEY_RANGE
 }
@@ -752,6 +793,11 @@ UBOOL UNSDLViewport::TickInput()
 				QuitRequested = true;
 				return true;
 			case SDL_TEXTINPUT:
+#ifdef PLATFORM_FUNKEY
+				// fkgpiod sends letter keycodes for buttons, which cause
+				// spurious text-input events. No keyboard on FunKey.
+				break;
+#else
 				for( const char *p = Ev.text.text; *p && p < Ev.text.text + sizeof( Ev.text.text ); ++p )
 				{
 					if( *p < 0 )
@@ -760,6 +806,7 @@ UBOOL UNSDLViewport::TickInput()
 						Client->Engine->Key( this, (EInputKey)*p );
 				}
 				break;
+#endif
 			case SDL_KEYDOWN:
 				if( Ev.key.keysym.sym == SDLK_RETURN && (Ev.key.keysym.mod & KMOD_ALT) )
 				{
@@ -767,7 +814,35 @@ UBOOL UNSDLViewport::TickInput()
 					break;
 				}
 			case SDL_KEYUP:
+#ifdef PLATFORM_FUNKEY
+				{
+					const SDL_Scancode sc = Ev.key.keysym.scancode;
+					const UBOOL IsPress = ( Ev.type == SDL_KEYDOWN );
+
+					// Fn modifier button — consumed, no key sent to engine.
+					if( Client->FnScanCode > 0 && sc == (SDL_Scancode)Client->FnScanCode )
+					{
+						FnHeld = IsPress;
+						break;
+					}
+
+					BYTE Key;
+					if( IsPress )
+					{
+						Key = FnHeld ? FnKeyMap[sc] : KeyMap[sc];
+						FnActiveKey[sc] = Key;
+					}
+					else
+					{
+						Key = FnActiveKey[sc];
+						FnActiveKey[sc] = 0;
+					}
+
+					CauseInputEvent( Key, IsPress ? IST_Press : IST_Release );
+				}
+#else
 				CauseInputEvent( KeyMap[Ev.key.keysym.scancode], ( Ev.type == SDL_KEYDOWN ) ? IST_Press : IST_Release );
+#endif
 				break;
 			case SDL_MOUSEBUTTONDOWN:
 			case SDL_MOUSEBUTTONUP:

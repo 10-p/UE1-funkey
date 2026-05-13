@@ -106,6 +106,7 @@ class NSDLDRV_API UNSDLClient : public UClient, public FNotifyHook
 	FLOAT ScaleRUV;
 	FLOAT DeadZoneXYZ;
 	FLOAT DeadZoneRUV;
+	INT FnScanCode;
 
 	// Constructors.
 	UNSDLClient();

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Unreal
+Comment=Unreal Engine 1 v200
+Exec=unreal_launcher.sh
+Icon=unreal
+Categories=games;
+Terminal=false
+Type=Application
+StartupNotify=true
+X-OD-Manual=readme.txt

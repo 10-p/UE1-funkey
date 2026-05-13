@@ -7,6 +7,12 @@
 #include <vitaGL.h>
 #include <unistd.h>
 #endif
+#ifdef PLATFORM_FUNKEY
+#include <unistd.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <signal.h>
+#endif
 
 #include "Engine.h"
 
@@ -126,12 +132,109 @@ static void PlatformPreInit()
 	vglSetSemanticBindingMode( VGL_MODE_POSTPONED );
 }
 
-#else
+#elif defined(PLATFORM_FUNKEY)
 
-void PlatformPreInit()
+//
+// FunKey/RG Nano-specific globals and functions.
+//
+
+#define MAX_PATH 1024
+#define SYSTEM_PATH "System/"
+
+static char GRootPath[MAX_PATH] = "";
+
+//
+// Find the Unreal game directory on the FunKey filesystem.
+//
+static bool FindRootPath( char* Out, int OutLen )
 {
+	static const char* SearchPaths[] = {
+		"/mnt/FunKey/Unreal/System/",
+		"/mnt/Funkey/Unreal/System/",
+		"/mnt/funkey/Unreal/System/",
+		"./System/",
+	};
 
+	for( unsigned int i = 0; i < sizeof(SearchPaths) / sizeof(*SearchPaths); ++i )
+	{
+		DIR* Dir = opendir( SearchPaths[i] );
+		if( Dir )
+		{
+			closedir( Dir );
+			// Strip the trailing "System/" to get the root
+			int len = strlen( SearchPaths[i] );
+			if( len > 7 )
+			{
+				snprintf( Out, OutLen, "%.*s", len - 7, SearchPaths[i] );
+			}
+			else
+			{
+				snprintf( Out, OutLen, "./" );
+			}
+			return true;
+		}
+	}
+
+	// Try current directory
+	DIR* Dir = opendir( "." );
+	if( Dir )
+	{
+		closedir( Dir );
+		snprintf( Out, OutLen, "./" );
+		return true;
+	}
+
+	return false;
 }
+
+[[noreturn]] static void EarlyError( const char* Msg )
+{
+	fprintf( stderr, "FATAL ERROR: %s\n", Msg );
+	SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "Fatal Error", Msg, nullptr );
+	_exit( 1 );
+}
+
+static void CrashHandler( int sig )
+{
+	const char* name = (sig == SIGSEGV) ? "SIGSEGV" : (sig == SIGBUS) ? "SIGBUS" : (sig == SIGABRT) ? "SIGABRT" : "UNKNOWN";
+	fprintf( stderr, "CRASH: signal %s (%d) received\n", name, sig );
+	fflush( stderr );
+	signal( sig, SIG_DFL );
+	raise( sig );
+}
+
+static void PlatformPreInit()
+{
+	signal( SIGSEGV, CrashHandler );
+	signal( SIGBUS, CrashHandler );
+	signal( SIGABRT, CrashHandler );
+
+	// Set SDL to use directfb (no X11/Wayland on FunKey, fbdev via DirectFB)
+	setenv( "SDL_VIDEODRIVER", "directfb", 0 );
+	setenv( "SDL_AUDIODRIVER", "alsa", 0 );
+
+	if( !FindRootPath( GRootPath, sizeof(GRootPath) ) )
+		EarlyError( "Could not find Unreal directory.\nPlace game files at /mnt/FunKey/Unreal/ with a System/ subfolder." );
+
+	// The engine expects CWD to be the System/ directory (where .u, .ini, .int files live).
+	static char SystemPath[512];
+	snprintf( SystemPath, sizeof(SystemPath), "%sSystem/", GRootPath );
+	if( chdir( SystemPath ) < 0 )
+		EarlyError( "Could not chdir to System directory" );
+
+	// Redirect stdout/stderr to log file in the game root (not System/).
+	static char LogPath[512];
+	snprintf( LogPath, sizeof(LogPath), "%sfunkey.log", GRootPath );
+	FILE* LogFile = freopen( LogPath, "w", stdout );
+	if( LogFile )
+		freopen( LogPath, "a", stderr );
+
+	fprintf( stdout, "FunKey: Using root path: %s\n", GRootPath );
+	fprintf( stdout, "FunKey: Working directory: %s\n", SystemPath );
+	fflush( stdout );
+}
+
+#else
 
 #endif
 
@@ -160,8 +263,6 @@ UEngine* InitEngine()
 	// Platform init.
 	appInit();
 	GDynMem.Init( 65536 );
-
-	// Init subsystems.
 	GSceneMem.Init( 32768 );
 
 	// First-run menu.

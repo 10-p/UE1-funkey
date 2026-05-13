@@ -44,6 +44,7 @@ UNSDLClient::UNSDLClient()
 	ScaleRUV = 100.f;
 	DeadZoneXYZ = 0.1f;
 	DeadZoneRUV = 0.1f;
+	FnScanCode = 16; // SDL_SCANCODE_M (L shoulder on RG Nano via fkgpiod)
 	unguard;
 }
 
@@ -58,6 +59,13 @@ void UNSDLClient::Init( UEngine* InEngine )
 
 	// Init base.
 	UClient::Init( InEngine );
+
+	// Read FnScanCode: missing entry = use default (16), empty = disabled (-1).
+	{
+		char FnStr[32] = "";
+		if( GetConfigString( "NSDLDrv.NSDLClient", "FnScanCode", FnStr, ARRAY_COUNT(FnStr) ) )
+			FnScanCode = FnStr[0] ? appAtoi( FnStr ) : -1;
+	}
 
 	Controller = NULL;
 

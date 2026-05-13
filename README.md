@@ -1,3 +1,119 @@
+# Unreal Engine 1 - FunKey S / Anbernic RG Nano Port
+
+Fork of [fgsfdsfgs/UE1](https://github.com/fgsfdsfgs/UE1) with support for the **FunKey S** and **Anbernic RG Nano** (ARM Cortex-A7, Allwinner V3s, 64MB RAM, 240x240 screen, FunKey-OS).
+
+Uses software rendering (SoftDrv) and OpenAL audio. No GPU required.
+
+## FunKey / RG Nano
+
+### Running
+
+1. Install the original retail v200 release of Unreal or the v205 demo onto your PC.
+2. Copy the game folders to `/mnt/FunKey/Unreal/` on the device:
+   * `System/` (`.u`, `.int` files)
+   * `Maps/`, `Textures/`, `Sounds/`, `Music/`
+3. Copy `FunKey/Default-FunKey.ini` from this repo to the device as `/mnt/FunKey/Unreal/System/Default.ini`.
+4. Delete `Unreal.ini` from the device's `System/` folder (it will be regenerated from `Default.ini` on first launch).
+5. Copy the `.opk` file to the device's applications folder.
+6. Launch from the FunKey menu.
+7. Logs are written to `/mnt/FunKey/Unreal/funkey.log`.
+
+### Building (on Linux or WSL)
+
+#### 1. Get the FunKey SDK
+
+Download or build the [FunKey-sdk-2.0.0](https://github.com/FunKey-Project/FunKey-OS) toolchain. Set the environment variable:
+```
+export FUNKEY_SDK_PATH=/path/to/FunKey-sdk-2.0.0
+```
+
+#### 2. Get the SDL2 + DirectFB SDK
+
+The FunKey SDK does not include SDL2. Download [joyrider3774's prebuilt FunKey SDL2 SDK](https://github.com/joyrider3774/sdks/releases/tag/v1.0):
+```
+wget https://github.com/joyrider3774/sdks/releases/download/v1.0/funkey-sdk-sdl2.tar.gz
+tar xzf funkey-sdk-sdl2.tar.gz
+```
+
+Copy the SDL2 headers and libraries into a `funkey-deps/` directory next to `Source/`:
+```
+mkdir -p funkey-deps/include funkey-deps/lib
+cp -r funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/include/SDL2 funkey-deps/include/
+cp -L funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/libSDL2* funkey-deps/lib/
+cp -L funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/libdirectfb* funkey-deps/lib/
+cp -L funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/libdirect-* funkey-deps/lib/
+cp -L funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/libfusion* funkey-deps/lib/
+cp -L funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/lib++dfb* funkey-deps/lib/
+cp -L funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/libts* funkey-deps/lib/
+cp -rL funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/directfb-1.7-7 funkey-deps/lib/
+```
+
+#### 3. Build libxmp
+
+```
+wget https://github.com/libxmp/libxmp/releases/download/libxmp-4.6.0/libxmp-4.6.0.tar.gz
+tar xzf libxmp-4.6.0.tar.gz
+cd libxmp-4.6.0
+cmake -Bbuild \
+    -DCMAKE_SYSTEM_NAME=Linux \
+    -DCMAKE_SYSTEM_PROCESSOR=armv7l \
+    -DCMAKE_C_COMPILER="$FUNKEY_SDK_PATH/bin/arm-funkey-linux-musleabihf-gcc" \
+    -DCMAKE_SYSROOT="$FUNKEY_SDK_PATH/arm-funkey-linux-musleabihf/sysroot" \
+    -DCMAKE_C_FLAGS="-mthumb -march=armv7-a+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4" \
+    -DCMAKE_INSTALL_PREFIX="$(pwd)/../funkey-deps" \
+    -DBUILD_SHARED_LIBS=ON
+cmake --build build -j
+cmake --install build
+cd ..
+```
+
+#### 4. Build UE1
+
+```
+cmake -G"Unix Makefiles" \
+    -DCMAKE_TOOLCHAIN_FILE=cmake/funkey-arm.cmake \
+    -DFUNKEY=ON \
+    -DFUNKEY_DEPS_PREFIX="$(pwd)/funkey-deps" \
+    -Bbuild-funkey Source
+cmake --build build-funkey -j
+```
+
+The binary will be at `build-funkey/Unreal/Unreal.bin`.
+
+#### 5. Package the OPK
+
+Install `squashfs-tools`, then:
+```
+cmake --build build-funkey --target package-opk
+```
+
+The OPK will be at `build-funkey/unreal_funkey-s.opk`.
+
+### Input mapping
+
+FunKey-OS maps physical buttons to letter keycodes via `fkgpiod`. This port remaps them for Unreal:
+
+| Button | Normal | Fn (L shoulder held) |
+|--------|--------|---------------------|
+| D-pad | Arrow keys | U / D / L / R |
+| A / B / X / Y | A / B / X / Y | T / G / H / J |
+| R shoulder | N | F |
+| Start | Enter | Enter |
+| Select | K | K |
+| Power/Menu | Escape | Escape |
+| L shoulder | Fn modifier | -- |
+
+The Fn modifier button is configurable in `Unreal.ini`:
+```ini
+[NSDLDrv.NSDLClient]
+FnScanCode=16
+```
+Set to empty (`FnScanCode=`) to disable the Fn layer and use L shoulder as a regular key.
+
+---
+
+# Original README below
+
 ## What?
 
 Unreal Engine 1 v200 source with modifications to make it run on modern systems.  
