@@ -59,7 +59,7 @@ Download [joyrider3774's FunKey SDK](https://github.com/joyrider3774/sdks/releas
 ```
 wget https://github.com/joyrider3774/sdks/releases/download/v1.0/funkey-sdk-sdl2.tar.gz
 tar xzf funkey-sdk-sdl2.tar.gz
-export FUNKEY_SDK_PATH="$(pwd)/funkey-sdk-sdl2/funkey-sdk"
+export FUNKEY_SDK_PATH="$(pwd)/funkey-sdk"
 ```
 
 #### 2. Set up SDL2 deps
