@@ -51,32 +51,31 @@ Set to empty (`FnScanCode=`) to disable the Fn layer and use L shoulder as a reg
 
 ### Building (on Linux or WSL)
 
+Pre-built OPKs are available from the [Actions](../../actions) tab. To build manually:
+
 #### 1. Get the FunKey SDK
 
-Download or build the [FunKey-sdk-2.0.0](https://github.com/FunKey-Project/FunKey-OS) toolchain. Set the environment variable:
-```
-export FUNKEY_SDK_PATH=/path/to/FunKey-sdk-2.0.0
-```
-
-#### 2. Get the SDL2 + DirectFB SDK
-
-The FunKey SDK does not include SDL2. Download [joyrider3774's prebuilt FunKey SDL2 SDK](https://github.com/joyrider3774/sdks/releases/tag/v1.0):
+Download [joyrider3774's FunKey SDK](https://github.com/joyrider3774/sdks/releases/tag/v1.0) which includes the cross-compiler, sysroot, SDL2 and DirectFB:
 ```
 wget https://github.com/joyrider3774/sdks/releases/download/v1.0/funkey-sdk-sdl2.tar.gz
 tar xzf funkey-sdk-sdl2.tar.gz
+export FUNKEY_SDK_PATH="$(pwd)/funkey-sdk-sdl2/funkey-sdk"
 ```
 
-Copy the SDL2 headers and libraries into a `funkey-deps/` directory next to `Source/`:
+#### 2. Set up SDL2 deps
+
+Copy the SDL2 and DirectFB headers/libraries into a `funkey-deps/` directory next to `Source/`:
 ```
+SDK_SYSROOT="$FUNKEY_SDK_PATH/arm-funkey-linux-musleabihf/sysroot"
 mkdir -p funkey-deps/include funkey-deps/lib
-cp -r funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/include/SDL2 funkey-deps/include/
-cp -L funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/libSDL2* funkey-deps/lib/
-cp -L funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/libdirectfb* funkey-deps/lib/
-cp -L funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/libdirect-* funkey-deps/lib/
-cp -L funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/libfusion* funkey-deps/lib/
-cp -L funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/lib++dfb* funkey-deps/lib/
-cp -L funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/libts* funkey-deps/lib/
-cp -rL funkey-sdk/arm-funkey-linux-musleabihf/sysroot/usr/lib/directfb-1.7-7 funkey-deps/lib/
+cp -r $SDK_SYSROOT/usr/include/SDL2 funkey-deps/include/
+cp -L $SDK_SYSROOT/usr/lib/libSDL2* funkey-deps/lib/
+cp -L $SDK_SYSROOT/usr/lib/libdirectfb* funkey-deps/lib/
+cp -L $SDK_SYSROOT/usr/lib/libdirect-* funkey-deps/lib/
+cp -L $SDK_SYSROOT/usr/lib/libfusion* funkey-deps/lib/
+cp -L $SDK_SYSROOT/usr/lib/lib++dfb* funkey-deps/lib/
+cp -L $SDK_SYSROOT/usr/lib/libts* funkey-deps/lib/
+cp -rL $SDK_SYSROOT/usr/lib/directfb-1.7-7 funkey-deps/lib/
 ```
 
 #### 3. Build libxmp
@@ -98,7 +97,7 @@ cmake --install build
 cd ..
 ```
 
-#### 4. Build UE1
+#### 4. Build UE1 and package OPK
 
 ```
 cmake -G"Unix Makefiles" \
@@ -111,10 +110,9 @@ cmake --build build-funkey -j
 
 The binary will be at `build-funkey/Unreal/Unreal.bin`.
 
-#### 5. Package the OPK
-
-Install `squashfs-tools`, then:
+Install `squashfs-tools` and package the OPK:
 ```
+sudo apt-get install -y squashfs-tools
 cmake --build build-funkey --target package-opk
 ```
 

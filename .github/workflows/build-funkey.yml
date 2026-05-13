@@ -1,0 +1,81 @@
+name: Build FunKey OPK
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        id: sdk-cache
+        with:
+          path: funkey-sdk
+          key: funkey-sdk-sdl2-v1.0
+
+      - name: Download FunKey SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          gh release download v1.0 --repo joyrider3774/sdks --pattern 'funkey-sdk-sdl2.tar.gz'
+          tar xzf funkey-sdk-sdl2.tar.gz
+          mv funkey-sdk-sdl2/funkey-sdk .
+          rm -rf funkey-sdk-sdl2 funkey-sdk-sdl2.tar.gz
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Install tools
+        run: sudo apt-get install -y squashfs-tools
+
+      - name: Set up SDL2 deps
+        run: |
+          mkdir -p funkey-deps/include funkey-deps/lib
+          SDK_SYSROOT=funkey-sdk/arm-funkey-linux-musleabihf/sysroot
+          cp -r $SDK_SYSROOT/usr/include/SDL2 funkey-deps/include/
+          cp -L $SDK_SYSROOT/usr/lib/libSDL2* funkey-deps/lib/
+          cp -L $SDK_SYSROOT/usr/lib/libdirectfb* funkey-deps/lib/
+          cp -L $SDK_SYSROOT/usr/lib/libdirect-* funkey-deps/lib/
+          cp -L $SDK_SYSROOT/usr/lib/libfusion* funkey-deps/lib/
+          cp -L $SDK_SYSROOT/usr/lib/lib++dfb* funkey-deps/lib/
+          cp -L $SDK_SYSROOT/usr/lib/libts* funkey-deps/lib/
+          cp -rL $SDK_SYSROOT/usr/lib/directfb-1.7-7 funkey-deps/lib/
+
+      - name: Build libxmp
+        run: |
+          gh release download libxmp-4.6.0 --repo libxmp/libxmp --pattern 'libxmp-4.6.0.tar.gz'
+          tar xzf libxmp-4.6.0.tar.gz
+          cd libxmp-4.6.0
+          cmake -Bbuild \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=armv7l \
+            -DCMAKE_C_COMPILER="${{ github.workspace }}/funkey-sdk/bin/arm-funkey-linux-musleabihf-gcc" \
+            -DCMAKE_SYSROOT="${{ github.workspace }}/funkey-sdk/arm-funkey-linux-musleabihf/sysroot" \
+            -DCMAKE_C_FLAGS="-mthumb -march=armv7-a+neon-vfpv4 -mtune=cortex-a7 -mfpu=neon-vfpv4" \
+            -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/funkey-deps" \
+            -DBUILD_SHARED_LIBS=ON
+          cmake --build build -j$(nproc)
+          cmake --install build
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Build UE1
+        run: |
+          cmake -G"Unix Makefiles" \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/funkey-arm.cmake \
+            -DFUNKEY=ON \
+            -DFUNKEY_SDK_PATH="${{ github.workspace }}/funkey-sdk" \
+            -DFUNKEY_DEPS_PREFIX="${{ github.workspace }}/funkey-deps" \
+            -Bbuild-funkey Source
+          cmake --build build-funkey -j$(nproc)
+
+      - name: Package OPK
+        run: cmake --build build-funkey --target package-opk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unreal-funkey-opk
+          path: build-funkey/unreal_funkey-s.opk
