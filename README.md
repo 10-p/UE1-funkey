@@ -4,6 +4,12 @@ Fork of [fgsfdsfgs/UE1](https://github.com/fgsfdsfgs/UE1) with support for the *
 
 Uses software rendering (SoftDrv) and OpenAL audio. No GPU required.
 
+This is a vibe coded app for a nifty toy so don't expect much more than this.
+
+This is the full fat Unreal. I recommend new players to go to options, enable auto aim, view spring and to customize the buttons if the defaults don't work for you.
+
+There are some small issues such as the graphics shadows showing some horizontal streaks or the view and weapon bobbing being jerky.
+
 ## FunKey / RG Nano
 
 ### Running
@@ -17,6 +23,31 @@ Uses software rendering (SoftDrv) and OpenAL audio. No GPU required.
 5. Copy the `.opk` file to the device's applications folder.
 6. Launch from the FunKey menu.
 7. Logs are written to `/mnt/FunKey/Unreal/funkey.log`.
+
+### Input
+
+The included `Default-FunKey.ini` provides these default bindings:
+
+| Button | Action | Fn + Button (L shoulder held) |
+|--------|--------|-------------------------------|
+| D-pad Up/Down | Move forward / backward | Look up / down |
+| D-pad Left/Right | Turn left / right | Prev / next inventory |
+| A | Fire | -- |
+| B | Alt-fire | -- |
+| X | Jump | Duck |
+| Y | Next weapon | -- |
+| R shoulder | Activate inventory | -- |
+| Start | Enter (confirm) | -- |
+| Select | Center view | -- |
+| Power/Menu | Menu (Escape) | -- |
+| L shoulder | Fn modifier (hold) | -- |
+
+All bindings can be changed in-game via Preferences. The Fn modifier button is configurable in `Unreal.ini`:
+```ini
+[NSDLDrv.NSDLClient]
+FnScanCode=16
+```
+Set to empty (`FnScanCode=`) to disable the Fn layer and use L shoulder as a regular key.
 
 ### Building (on Linux or WSL)
 
@@ -88,27 +119,6 @@ cmake --build build-funkey --target package-opk
 ```
 
 The OPK will be at `build-funkey/unreal_funkey-s.opk`.
-
-### Input mapping
-
-FunKey-OS maps physical buttons to letter keycodes via `fkgpiod`. This port remaps them for Unreal:
-
-| Button | Normal | Fn (L shoulder held) |
-|--------|--------|---------------------|
-| D-pad | Arrow keys | U / D / L / R |
-| A / B / X / Y | A / B / X / Y | T / G / H / J |
-| R shoulder | N | F |
-| Start | Enter | Enter |
-| Select | K | K |
-| Power/Menu | Escape | Escape |
-| L shoulder | Fn modifier | -- |
-
-The Fn modifier button is configurable in `Unreal.ini`:
-```ini
-[NSDLDrv.NSDLClient]
-FnScanCode=16
-```
-Set to empty (`FnScanCode=`) to disable the Fn layer and use L shoulder as a regular key.
 
 ---
 
