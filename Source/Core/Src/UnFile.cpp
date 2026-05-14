@@ -315,14 +315,21 @@ CORE_API DOUBLE appFmod( DOUBLE Y, DOUBLE X )
 }
 CORE_API DOUBLE appSin( DOUBLE Value )
 {
+	// Pre-reduce argument to avoid musl libc sin() bug on ARM
+	// where arguments > ~2pi return quantized {-1,0,1} values.
+	Value = fmod(Value, 2.0 * 3.14159265358979323846);
 	return sin(Value);
 }
 CORE_API DOUBLE appCos( DOUBLE Value )
 {
+	// Pre-reduce argument to avoid musl libc cos() bug on ARM.
+	Value = fmod(Value, 2.0 * 3.14159265358979323846);
 	return cos(Value);
 }
 CORE_API DOUBLE appTan( DOUBLE Value )
 {
+	// Pre-reduce argument to avoid musl libc tan() bug on ARM.
+	Value = fmod(Value, 2.0 * 3.14159265358979323846);
 	return tan(Value);
 }
 CORE_API DOUBLE appAtan( DOUBLE Value )

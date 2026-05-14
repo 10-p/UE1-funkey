@@ -2129,7 +2129,7 @@ DWORD FLightManager::SetupForActor( FSceneNode* InFrame, AActor* InActor, FVolAc
 		Level->SetActorZone( Actor, 1, 0 );
 
 	// Ambient lighting.
-	FLOAT C       = Actor->AmbientGlow!=255 ? Actor->AmbientGlow/255.0 : 0.25+0.2*sin(8*Frame->Viewport->CurrentTime);
+	FLOAT C       = Actor->AmbientGlow!=255 ? Actor->AmbientGlow/255.0 : 0.25+0.2*appSin(8*Frame->Viewport->CurrentTime);
 	AmbientVector = FVector(C,C,C) + FGetHSV( Zone->AmbientHue, Zone->AmbientSaturation, Zone->AmbientBrightness );
 
 	// Reject if the proper data structures aren't in place.
