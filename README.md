@@ -2,15 +2,11 @@
 
 Fork of [fgsfdsfgs/UE1](https://github.com/fgsfdsfgs/UE1) with support for the **FunKey S** and **Anbernic RG Nano** (ARM Cortex-A7, Allwinner V3s, 64MB RAM, 240x240 screen, FunKey-OS).
 
-Uses software rendering (SoftDrv) and OpenAL audio. No GPU required.
-
 This is a vibe coded app for a nifty toy so don't expect much more than this.
 
 This is the full fat Unreal. I recommend new players to go to options, enable auto aim, view spring and to customize the buttons if the defaults don't work for you.
 
-There are some small issues such as the graphics shadows showing some horizontal streaks or the view and weapon bobbing being jerky.
-
-## FunKey / RG Nano
+## FunKey / RG Nano instructions
 
 ### Running
 

@@ -41,11 +41,13 @@ void SetupFastSqrt();
 inline unsigned int _rotl( unsigned int a, int s )
 {
 	s &= 31;
+	if( s == 0 ) return a;
 	return (a << s) | (a >> (32 - s));
 }
 inline unsigned int _rotr( unsigned int a, int s )
 {
 	s &= 31;
+	if( s == 0 ) return a;
 	return (a >> s) | (a << (32 - s));
 }
 #endif
