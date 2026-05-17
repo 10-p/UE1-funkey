@@ -196,9 +196,10 @@ static bool FindRootPath( char* Out, int OutLen )
 
 static void CrashHandler( int sig )
 {
-	const char* name = (sig == SIGSEGV) ? "SIGSEGV" : (sig == SIGBUS) ? "SIGBUS" : (sig == SIGABRT) ? "SIGABRT" : "UNKNOWN";
+	const char* name = (sig == SIGSEGV) ? "SIGSEGV" : (sig == SIGBUS) ? "SIGBUS" : (sig == SIGABRT) ? "SIGABRT" : (sig == SIGILL) ? "SIGILL" : "UNKNOWN";
 	fprintf( stderr, "CRASH: signal %s (%d) received\n", name, sig );
 	fflush( stderr );
+	fflush( stdout );
 	signal( sig, SIG_DFL );
 	raise( sig );
 }
@@ -208,6 +209,7 @@ static void PlatformPreInit()
 	signal( SIGSEGV, CrashHandler );
 	signal( SIGBUS, CrashHandler );
 	signal( SIGABRT, CrashHandler );
+	signal( SIGILL, CrashHandler );
 
 	// Set SDL to use directfb (no X11/Wayland on FunKey, fbdev via DirectFB)
 	setenv( "SDL_VIDEODRIVER", "directfb", 0 );
@@ -227,7 +229,12 @@ static void PlatformPreInit()
 	snprintf( LogPath, sizeof(LogPath), "%sfunkey.log", GRootPath );
 	FILE* LogFile = freopen( LogPath, "w", stdout );
 	if( LogFile )
+	{
 		freopen( LogPath, "a", stderr );
+		// Line-buffer stdout so log lines are flushed immediately.
+		// Without this, a crash loses all buffered output.
+		setvbuf( stdout, NULL, _IOLBF, 0 );
+	}
 
 	fprintf( stdout, "FunKey: Using root path: %s\n", GRootPath );
 	fprintf( stdout, "FunKey: Working directory: %s\n", SystemPath );
@@ -235,6 +242,11 @@ static void PlatformPreInit()
 }
 
 #else
+
+static void PlatformPreInit()
+{
+	// Generic Linux/SDL — no special init needed.
+}
 
 #endif
 
@@ -332,6 +344,11 @@ void MainLoop( UEngine* Engine )
 void ExitEngine( UEngine* Engine )
 {
 	guard(ExitEngine);
+
+	// Save all config files (Unreal.ini etc.) before tearing down objects.
+	// The normal path saves via GConfigCache destructor after main() returns,
+	// but if anything crashes during shutdown the destructor never runs.
+	GConfigCache.SaveAllConfigs();
 
 	GObj.Exit();
 	GMem.Exit();
