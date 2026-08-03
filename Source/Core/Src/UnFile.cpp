@@ -315,20 +315,26 @@ CORE_API DOUBLE appFmod( DOUBLE Y, DOUBLE X )
 }
 CORE_API DOUBLE appSin( DOUBLE Value )
 {
-	// Pre-reduce argument to avoid musl libc sin() bug on ARM
-	// where arguments > ~2pi return quantized {-1,0,1} values.
+	// Range-reduce before the libm call. On the FunKey toolchain, large
+	// arguments were observed to come back quantized to roughly {-1,0,1}
+	// instead of a smooth wave -- most visibly as the view bob snapping
+	// between extremes once CurrentTime had grown for a few minutes.
+	// The root cause has not been pinned down (musl's own sin() does
+	// correct Payne-Hanek reduction, so it is more likely something in
+	// the toolchain's codegen or fp flags); this reduction sidesteps it
+	// for the value ranges the engine actually uses.
 	Value = fmod(Value, 2.0 * 3.14159265358979323846);
 	return sin(Value);
 }
 CORE_API DOUBLE appCos( DOUBLE Value )
 {
-	// Pre-reduce argument to avoid musl libc cos() bug on ARM.
+	// See appSin.
 	Value = fmod(Value, 2.0 * 3.14159265358979323846);
 	return cos(Value);
 }
 CORE_API DOUBLE appTan( DOUBLE Value )
 {
-	// Pre-reduce argument to avoid musl libc tan() bug on ARM.
+	// See appSin.
 	Value = fmod(Value, 2.0 * 3.14159265358979323846);
 	return tan(Value);
 }

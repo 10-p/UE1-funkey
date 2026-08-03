@@ -113,6 +113,8 @@ elseif(FUNKEY)
     # Binary and FunKey metadata
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${PROJECT_NAME}>" "${OPK_STAGING}/Unreal.bin"
     COMMAND ${CMAKE_COMMAND} -E copy "${FUNKEY_DIR}/unreal.funkey-s.desktop" "${OPK_STAGING}/"
+    COMMAND ${CMAKE_COMMAND} -E copy "${FUNKEY_DIR}/unreal.png" "${OPK_STAGING}/"
+    COMMAND ${CMAKE_COMMAND} -E copy "${FUNKEY_DIR}/readme.txt" "${OPK_STAGING}/"
     COMMAND ${CMAKE_COMMAND} -E copy "${FUNKEY_DIR}/unreal_launcher.sh" "${OPK_STAGING}/"
     COMMAND chmod +x "${OPK_STAGING}/Unreal.bin" "${OPK_STAGING}/unreal_launcher.sh"
 

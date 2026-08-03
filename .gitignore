@@ -6,5 +6,6 @@ Source/.vs
 Source/UnrealED/obj
 build-funkey/
 build-funkey-opk/
+build-linux/
 funkey-deps/
 funkey-deps-build/
