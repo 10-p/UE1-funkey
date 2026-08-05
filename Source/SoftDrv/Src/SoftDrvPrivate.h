@@ -18,9 +18,22 @@
 #define GIsMMX false
 #endif
 
-// Maximum supported sizes. 
-#define MaximumYScreenSize  1200   
-#define MaximumXScreenSize  2048
+// Maximum supported sizes.
+//
+// These bound STATIC arrays (Setup, MMXSetup and SpanIndex on Y; UCoordTable, Photon and FogPhoton
+// on X), so they cost their full size in .bss at every resolution, not just at the ceiling. That is
+// worth paying attention to on a 64 MB device rendering into a 240x240 panel, hence the build-time
+// override (-DSOFTDRV_MAX_SCREEN=n, set from Source/SoftDrv/CMakeLists.txt).
+//
+// Fail-soft above the ceiling is only half-implemented in this tree: DrawPoly bails on
+// Viewport->SizeY > MaximumYScreenSize, but nothing clamps X, and this fork has no SoftDrv::SetRes
+// to clamp it in. So the Y bound is a genuine ceiling while the X bound is an assumption -- keep it
+// comfortably above any width the target can actually open, rather than trimming it to the panel.
+#ifndef SOFTDRV_MAX_SCREEN
+#define SOFTDRV_MAX_SCREEN 2048
+#endif
+#define MaximumYScreenSize  SOFTDRV_MAX_SCREEN
+#define MaximumXScreenSize  SOFTDRV_MAX_SCREEN
 
 
 // Coarse fast square root approximation
@@ -148,6 +161,11 @@ class DLL_EXPORT USoftwareRenderDevice : public URenderDevice
 
 	// Temp statistics.
 	INT SurfPalBuilds;
+	// Which filtering to use when HighRes/LowResTextureSmooth have already enabled it for this
+	// resolution: False = the original 2x2 knight's-move coordinate dither (one texel, ~free),
+	// True = true bilinear (four texels and a blend). Smoothing off is point sampling either way,
+	// so this knob only ever picks between the two filtered modes.
+	UBOOL			BilinearFiltering;
 
 	// Preference variables.
 	UBOOL FastTranslucency;
